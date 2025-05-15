@@ -4,7 +4,8 @@ const authController = require('../controllers/authController');
 
 const router = express.Router();
 
-router.post('/register', authController.register);
-// Agrega la ruta de inicio de sesión aquí
+// Rutas de autenticación
+router.post('/register', authController.register);  // Ruta para registrar usuarios
+router.post('/login', authController.login);        // Ruta para iniciar sesión
 
 module.exports = router;

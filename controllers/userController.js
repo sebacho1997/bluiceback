@@ -1,6 +1,6 @@
 // controllers/userController.js
 const User = require('../models/user');
-
+const bcrypt = require('bcryptjs');
 const userController = {
   async createUser(req, res) {
     const { nombre, email, contraseña, tipo } = req.body;
@@ -17,9 +17,10 @@ const userController = {
 
   async getAllUsers(req, res) {
     // Solo los administradores pueden ver todos los usuarios
-    if (req.user.tipo !== 'administrador') {
-      return res.status(403).send('Acceso denegado');
-    }
+    console.log('Obteniendo todos los usuarios...');
+    //if (req.user.tipo !== 'administrador') {
+    //  return res.status(403).send('Acceso denegado');
+    //}
 
     const users = await User.getAll(); // Asegúrate de implementar este método en el modelo
     res.json(users);
@@ -38,7 +39,57 @@ const userController = {
       return res.status(404).send('Usuario no encontrado');
     }
     res.json(user);
+  },
+
+async updateUser(req, res) {
+  const { id } = req.params;
+  const { nombre, email, contraseña, tipo } = req.body;
+
+  if (req.user.tipo !== 'administrador') {
+    return res.status(403).send('Acceso denegado');
   }
+
+  const hashedPassword = await bcrypt.hash(contraseña, 10);
+  const updatedUser = await User.update(id, {
+    nombre,
+    email,
+    contraseña: hashedPassword,
+    tipo
+  });
+
+  res.json(updatedUser);
+},
+async getUsersByType(req, res) {
+  // Solo administradores pueden usar este filtro
+  if (req.user.tipo !== 'administrador') {
+    return res.status(403).send('Acceso denegado');
+  }
+
+  const tipo = req.query.tipo; // Leemos ?tipo=valor desde la URL
+
+  if (!tipo) {
+    return res.status(400).send('Falta parámetro tipo');
+  }
+
+  const users = await User.getByType(tipo);
+
+  res.json(users);
+},
+async deleteUser(req, res) {
+  const { id } = req.params;
+
+  // Solo los administradores pueden eliminar usuarios
+  if (req.user.tipo !== 'administrador') {
+    return res.status(403).send('Acceso denegado');
+  }
+
+  const deleted = await User.deleteById(id);
+  if (!deleted) {
+    return res.status(404).send('Usuario no encontrado');
+  }
+
+  res.send('Usuario eliminado correctamente');
+}
 };
 
 module.exports = userController;
