@@ -5,6 +5,7 @@ const pedidoController = require('../controllers/pedidoController');
 const router = express.Router();
 
 router.post('/', pedidoController.create);
-router.get('/:usuario_id', pedidoController.getPedidosPorEstado);
-router.put('/estado/:pedido_id', pedidoController.actualizarEstado);
+router.get('/:usuario_id/:estado', pedidoController.getByEstadoYCliente);
+router.put('/estado/:id', pedidoController.cambiarEstado);
+router.put('/:pedidoId/asignar-conductor', pedidoController.assignConductor);
 module.exports = router;
