@@ -24,6 +24,37 @@ const authController = {
     res.status(201).json({ message: 'Usuario registrado con éxito', user: newUser });
   },
 
+  async signup(req, res) {
+  const { nombre, email, contraseña } = req.body;
+
+  // Verifica si el email ya existe
+  const existingUser = await User.getByEmail(email);
+  if (existingUser) {
+    return res.status(400).send('El email ya está registrado');
+  }
+
+  // Hashea la contraseña
+  const hashedPassword = await bcrypt.hash(contraseña, 10);
+
+  // Crea el nuevo usuario con tipo 'cliente'
+  const newUser = await User.create({
+    nombre,
+    email,
+    contraseña: hashedPassword,
+    tipo: 'cliente'  // Forzado como cliente
+  });
+
+  res.status(201).json({
+    message: 'Cliente registrado con éxito',
+    user: {
+      id: newUser.id,
+      nombre: newUser.nombre,
+      email: newUser.email,
+      tipo: newUser.tipo
+    }
+  });
+},
+
   async login(req, res) {
   const { email, contraseña } = req.body;
   console.log("lo que se recibe:", req.body);
