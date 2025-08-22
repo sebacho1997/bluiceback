@@ -43,25 +43,27 @@ const userController = {
 
 async updateUser(req, res) {
   const { id } = req.params;
-  const { nombre, email, contraseña, tipo } = req.body;
-
-  if (req.user.tipo !== 'administrador') {
+  const { nombre,telefono, email, password,activado, tipo_usuario } = req.body;
+  console.log("tipo Usuario:"+ req.user.tipo_usuario);
+  if (req.user.tipo_usuario !== 'administrador') {
     return res.status(403).send('Acceso denegado');
   }
 
-  const hashedPassword = await bcrypt.hash(contraseña, 10);
+  const hashedPassword = await bcrypt.hash(password, 10);
   const updatedUser = await User.update(id, {
     nombre,
+    telefono,
     email,
-    contraseña: hashedPassword,
-    tipo
+    password: hashedPassword,
+    activado,
+    tipo_usuario
   });
 
   res.json(updatedUser);
 },
 async getUsersByType(req, res) {
   // Solo administradores pueden usar este filtro
-  if (req.user.tipo !== 'administrador') {
+  if (req.user.tipo_usuario !== 'administrador') {
     return res.status(403).send('Acceso denegado');
   }
 

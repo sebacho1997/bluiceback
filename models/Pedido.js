@@ -5,13 +5,13 @@ const Pedido = {
   async create(pedidoData) {
     const {
       usuario_id,
-      direccion_id, // opcional
+      direccion_id,
       direccion,
       latitud,
       longitud,
       info_extra,
       metodo_pago,
-      productos
+      productos, // [{ producto_id, cantidad }]
     } = pedidoData;
 
     const client = await pool.connect();
@@ -19,27 +19,47 @@ const Pedido = {
     try {
       await client.query('BEGIN');
 
-      // Insertar el pedido
-      const result = await client.query(
-        `INSERT INTO pedidos (usuario_id, direccion_id, direccion, latitud, longitud, info_extra, metodo_pago, estado)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, 'pendiente')
+      // Insertar pedido
+      const pedidoResult = await client.query(
+        `INSERT INTO pedidos 
+          (usuario_id, direccion_id, direccion, latitud, longitud, info_extra, metodo_pago)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING *`,
         [usuario_id, direccion_id || null, direccion || null, latitud || null, longitud || null, info_extra || null, metodo_pago]
       );
 
-      const pedido = result.rows[0];
+      const pedido = pedidoResult.rows[0];
+      let montoTotal = 0;
 
-      // Insertar productos del pedido
+      // Insertar productos
       for (const prod of productos) {
+        const prodRes = await client.query(
+          'SELECT precio_unitario FROM productos WHERE idproducto = $1',
+          [prod.producto_id]
+        );
+        if (prodRes.rows.length === 0) {
+          throw new Error(`Producto con id ${prod.producto_id} no existe`);
+        }
+        const precioUnitario = prodRes.rows[0].precio_unitario;
+        montoTotal += precioUnitario * prod.cantidad;
+
         await client.query(
-          `INSERT INTO pedido_productos (pedido_id, producto_id, cantidad)
-           VALUES ($1, $2, $3)`,
-          [pedido.id, prod.producto_id, prod.cantidad]
+          `INSERT INTO pedidoproducto (pedido_id, producto_id, cantidad, precio_unitario)
+           VALUES ($1, $2, $3, $4)`,
+          [pedido.id, prod.producto_id, prod.cantidad, precioUnitario]
         );
       }
 
+      // Actualizar montos
+      const updateResult = await client.query(
+        `UPDATE pedidos 
+         SET monto_total = $1, monto_pendiente = $1, monto_pagado = 0
+         WHERE id = $2 RETURNING *`,
+        [montoTotal, pedido.id]
+      );
+
       await client.query('COMMIT');
-      return pedido;
+      return updateResult.rows[0];
 
     } catch (error) {
       await client.query('ROLLBACK');
@@ -49,6 +69,35 @@ const Pedido = {
       client.release();
     }
   },
+
+  async getAll() {
+    try {
+      const result = await pool.query(
+        `SELECT * FROM pedidos ORDER BY id DESC`
+      );
+      return result.rows;
+    } catch (error) {
+      console.error('Error al obtener pedidos:', error);
+      throw new Error('No se pudo obtener los pedidos');
+    }
+  },
+
+  async getById(pedido_id) {
+  try {
+    const pedidoRes = await pool.query(
+      `SELECT * FROM pedidos WHERE id = $1`,
+      [pedido_id]
+    );
+    if (pedidoRes.rows.length === 0) return null;
+
+    const pedido = pedidoRes.rows[0];
+    return pedido;
+
+  } catch (error) {
+    console.error('Error al obtener detalle de pedido:', error);
+    throw new Error('No se pudo obtener el pedido');
+  }
+},
 
   async getByEstadoYCliente(usuario_id, estado) {
     try {
@@ -77,13 +126,20 @@ const Pedido = {
       throw new Error('No se pudo actualizar el estado');
     }
   },
-  async assignConductor(pedidoId, conductorId) {
-  const result = await pool.query(
-    'UPDATE pedidos SET id_conductor = $1 WHERE id = $2 RETURNING *',
-    [conductorId, pedidoId]
-  );
-  return result.rows[0];
-},
+
+  async assignConductor(pedidoId, id_conductor) {
+    try {
+      const result = await pool.query(
+        `UPDATE pedidos SET id_conductor = $1 WHERE id = $2 RETURNING *`,
+        [id_conductor, pedidoId]
+      );
+      console.log("id_conductor de model:"+id_conductor)
+      return result.rows[0];
+    } catch (error) {
+      console.error('Error al asignar conductor:', error);
+      throw new Error('No se pudo asignar el conductor');
+    }
+  },
 };
 
 module.exports = Pedido;

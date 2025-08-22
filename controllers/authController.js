@@ -5,7 +5,7 @@ const User = require('../models/user');
 
 const authController = {
   async register(req, res) {
-    const { nombre, email, contraseña, tipo } = req.body;
+    const { nombre, email,telefono, password,activado, tipo_usuario } = req.body;
 
     // Verifica si el email ya existe en la base de datos
     const existingUser = await User.getByEmail(email);
@@ -15,17 +15,17 @@ const authController = {
     }
 
     // Hashea la contraseña antes de almacenarla
-    const hashedPassword = await bcrypt.hash(contraseña, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // Crea el nuevo usuario
-    const newUser = await User.create({ nombre, email, contraseña: hashedPassword, tipo });
+    const newUser = await User.create({ nombre,telefono, email, password: hashedPassword,activado, tipo_usuario });
     
     // Enviar una respuesta de éxito
     res.status(201).json({ message: 'Usuario registrado con éxito', user: newUser });
   },
 
   async signup(req, res) {
-  const { nombre, email, contraseña } = req.body;
+  const { nombre,telefono, email, password,activado,tipo_usuario } = req.body;
 
   // Verifica si el email ya existe
   const existingUser = await User.getByEmail(email);
@@ -34,14 +34,16 @@ const authController = {
   }
 
   // Hashea la contraseña
-  const hashedPassword = await bcrypt.hash(contraseña, 10);
+  const hashedPassword = await bcrypt.hash(password, 10);
 
   // Crea el nuevo usuario con tipo 'cliente'
   const newUser = await User.create({
     nombre,
+    telefono,
     email,
-    contraseña: hashedPassword,
-    tipo: 'cliente'  // Forzado como cliente
+    password: hashedPassword,
+    activado,
+    tipo_usuario: 'cliente'  // Forzado como cliente
   });
 
   res.status(201).json({
@@ -49,8 +51,9 @@ const authController = {
     user: {
       id: newUser.id,
       nombre: newUser.nombre,
+      telefono: newUser.telefono,
       email: newUser.email,
-      tipo: newUser.tipo
+      tipo_usuario: newUser.tipo_usuario
     }
   });
 },
@@ -63,13 +66,14 @@ const authController = {
   if (!user) {
     return res.status(404).send('Usuario no encontrado');
   }
-
-  const match = await bcrypt.compare(contraseña, user.contraseña);
+  console.log("encontrado pass:", user.password);
+  console.log("comparando", user.password, contraseña);
+  const match = await bcrypt.compare(contraseña, user.password);
   if (!match) {
     return res.status(401).send('Contraseña incorrecta');
   }
 
-  const token = jwt.sign({ id: user.id, tipo: user.tipo }, 'tu_clave_secreta', { expiresIn: '1h' });
+  const token = jwt.sign({ id: user.id, tipo_usuario: user.tipo_usuario }, 'tu_clave_secreta', { expiresIn: '1h' });
 
   res.json({
     token,
@@ -77,7 +81,7 @@ const authController = {
       id: user.id,
       nombre: user.nombre,
       email: user.email,
-      rol: user.tipo
+      rol: user.tipo_usuario
     }
   });
 

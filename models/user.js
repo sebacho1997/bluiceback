@@ -5,7 +5,7 @@ const User = {
   async getByEmail(email) {
     try {
       const result = await pool.query('SELECT * FROM usuarios WHERE email = $1', [email]);
-      return result.rows[0]; // Devuelve el primer usuario encontrado
+      return result.rows[0]; 
     } catch (error) {
       console.error('Error al obtener usuario por email:', error);
       throw new Error('No se pudo obtener el usuario');
@@ -13,11 +13,11 @@ const User = {
   },
 
   async create(userData) {
-    const { nombre, email, contraseña, tipo } = userData;
+    const { nombre,telefono, email, password,activado, tipo_usuario } = userData;
     try {
       const result = await pool.query(
-        'INSERT INTO usuarios (nombre, email, contraseña, tipo) VALUES ($1, $2, $3, $4) RETURNING *',
-        [nombre, email, contraseña, tipo]
+        'INSERT INTO usuarios (nombre,telefono,email, password, activado, tipo_usuario) VALUES ($1, $2, $3, $4,$5,$6) RETURNING *',
+        [nombre,telefono, email, password,activado, tipo_usuario]
       );
       return result.rows[0];
     } catch (error) {
@@ -27,17 +27,25 @@ const User = {
   },
 
   async update(id, userData) {
-    const { nombre, email, contraseña, tipo } = userData;
-    const result = await pool.query(
-      'UPDATE usuarios SET nombre = $1, email = $2, contraseña = $3, tipo = $4 WHERE id = $5 RETURNING id, nombre, email, tipo',
-      [nombre, email, contraseña, tipo, id]
-    );
-    return result.rows[0];
-  },
+  const { nombre, telefono, email, password, activado, tipo_usuario } = userData;
+  const result = await pool.query(
+    `UPDATE usuarios
+     SET nombre = $1,
+         telefono = $2,
+         email = $3,
+         password = $4,
+         activado = $5,
+         tipo_usuario = $6
+     WHERE id = $7
+     RETURNING id, nombre, telefono, email, activado, tipo_usuario`,
+    [nombre, telefono, email, password, activado, tipo_usuario, id]
+  );
+  return result.rows[0];
+},
 
   async getAll() {
     try {
-      const result = await pool.query('SELECT id, nombre, email, tipo FROM usuarios');
+      const result = await pool.query('SELECT id, nombre, email, tipo_usuario FROM usuarios');
       return result.rows;
     } catch (error) {
       console.error('Error al obtener todos los usuarios:', error);
@@ -54,10 +62,10 @@ const User = {
       throw new Error('No se pudo obtener el usuario');
     }
   },
-  async getByType(tipo) {
+  async getByType(tipo_usuario) {
   const result = await pool.query(
-    'SELECT id, nombre, email, tipo FROM usuarios WHERE tipo = $1',
-    [tipo]
+    'SELECT id, nombre, email, tipo_usuario FROM usuarios WHERE tipo_usuario = $1',
+    [tipo_usuario]
   );
   return result.rows;
 },
